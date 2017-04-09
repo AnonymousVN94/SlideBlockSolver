@@ -68,6 +68,7 @@ public:
 	bool possibleReachTo(Coor coor);
 	void getAllMove(std::vector<int> &move);
 	void getFreeCoorIfMove(std::vector<Coor> &coor, int distance);
+	void setBodyCoor(std::vector<Coor> &_bodyCoor);
 	bool inline isValidPosition(const Coor &coor);
 	bool inline isValidPosition(int x, int y);
 	bool inline isFreePosition(const Coor &coor);

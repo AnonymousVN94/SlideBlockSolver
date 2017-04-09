@@ -34,10 +34,12 @@ class HelloWorld : public cocos2d::Layer
 private:
 	std::vector<Coor> coor;
 	std::vector<SlideBlock*> slideblocks;
-	std::stack<int> historyMove;
+	std::vector<std::vector<Coor>> originSlideBlocks;
 	std::vector<Move> tracePath, paths;
 	std::set<unsigned int> stateMatrix;
+	std::vector<unsigned int> hashMove;
 	bool found;
+	int index;
 public:
     static cocos2d::Scene* createScene();
 
@@ -50,6 +52,8 @@ public:
 	void searchPath();
 	void searchPathRecursive();
 	void takeAMove();
+	void optimizePath();
+	void goBack();
     // implement the "static create()" method manually
     CREATE_FUNC(HelloWorld);
 	bool onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event);

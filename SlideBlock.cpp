@@ -207,6 +207,12 @@ void SlideBlock::getFreeCoorIfMove(std::vector<Coor>& coor, int distance)
 			coor.push_back(bodyCoor[i]);
 }
 
+void SlideBlock::setBodyCoor(std::vector<Coor> &_bodyCoor)
+{
+	bodyCoor = _bodyCoor;
+	this->setPosition(Vec2::ZERO);
+}
+
 void SlideBlock::logdebug()
 {
 	int i;

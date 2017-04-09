@@ -63,6 +63,7 @@ bool HelloWorld::init()
 				sb = SlideBlock::create(coor, type);
 				this->addChild(sb, 1);
 				slideblocks.push_back(sb);
+				originSlideBlocks.push_back(coor);
 				coor.clear();
 				break;
 			case cocos2d::ui::Widget::TouchEventType::CANCELED:
@@ -267,9 +268,11 @@ void HelloWorld::takeAMove()
 	{
 		log("------------- found path -------------- %d moves", paths.size());
 		found = true;
+		optimizePath();
 		return;
 	}
-	auto state = stateMatrix.insert(SlideBlock::hashCurrentMatrix());
+	unsigned int hashMatrix = SlideBlock::hashCurrentMatrix();
+	auto state = stateMatrix.insert(hashMatrix);
 	moves.clear();
 	getAllMove(moves);
 	sortMove(moves, paths);
@@ -282,6 +285,7 @@ void HelloWorld::takeAMove()
 			m = moves[std::rand() % moves.size()];
 		slideblocks[m._id]->moveBy(m._distance);
 		paths.push_back(m);
+		hashMove.push_back(hashMatrix);
 		slideblocks[m._id]->refreshPosition([&]()
 		{
 			takeAMove();
@@ -290,6 +294,48 @@ void HelloWorld::takeAMove()
 	else
 	{
 		log("=================== out of move ================");
+	}
+}
+
+void HelloWorld::optimizePath()
+{
+	if(paths.size() != hashMove.size())
+	{
+		log("Optimize path failed!");
+		return;
+	}
+	log("============= Optimizing path distance %d =============", paths.size());
+	int i, j;
+	for(i = 0; i < hashMove.size() - 1; ++i)
+	{
+		for(j = i + 1; j < hashMove.size(); ++j)
+			if(hashMove[i] == hashMove[j])
+			{
+				hashMove.erase(hashMove.begin() + i, hashMove.begin() + j);
+				paths.erase(paths.begin() + i, paths.begin() + j);
+				j = i + 1;
+			}
+	}
+	log("============= Optimize path finished %d =============", paths.size());
+	for(i = 0; i < slideblocks.size(); ++i)
+		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+	index = -1;
+	this->runAction(Sequence::create(DelayTime::create(15.0f), CallFunc::create([&]()
+	{
+		goBack();
+	}), nullptr));
+}
+
+void HelloWorld::goBack()
+{
+	++index;
+	if(index < paths.size())
+	{
+		slideblocks[paths[index]._id]->moveBy(paths[index]._distance);
+		slideblocks[paths[index]._id]->refreshPosition([&]()
+		{
+			goBack();
+		});
 	}
 }
 
