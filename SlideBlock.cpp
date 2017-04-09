@@ -29,6 +29,20 @@ SlideBlock * SlideBlock::create(std::vector<Coor>& coor, TYPE type)
 	}
 }
 
+unsigned int SlideBlock::hashCurrentMatrix()
+{
+	int i, j;
+	char c;
+	unsigned int ret = 37;
+	for(i = 0; i < 6; ++i)
+		for(j = 0; j < 6; ++j)
+		{
+			c = _matrix[i][j] ? '1' : '0';
+			ret = (ret * 54059) ^ (c * 76963);
+		}
+	return ret;
+}
+
 bool SlideBlock::init()
 {
 	for(auto c : bodyCoor)
@@ -130,13 +144,20 @@ void SlideBlock::moveBy(int distance)
 	trace.push(distance);
 }
 
-void SlideBlock::refreshPosition()
+void SlideBlock::refreshPosition(std::function<void()> cbOnFinish)
 {
-	int i;
-	for(i = 0; i < _lenght; ++i)
+	if(trace.empty())
 	{
-		bodySprite[i]->setPosition(bodyCoor[i].x * 90 + 45, 210 + bodyCoor[i].y * 90 + 45);
+		log("========== slideblock %d stack is empty ==============", _id);
+		return;
 	}
+	int distance = trace.top();
+	Vec2 moveDistance;
+	if(_type == TYPE::VERTICAL)
+		moveDistance = Vec2(0.0f, distance * 90);
+	else
+		moveDistance = Vec2(distance * 90, 0.0f);
+	this->runAction(Sequence::create(MoveBy::create(0.025f, moveDistance), CallFunc::create(cbOnFinish), nullptr));
 }
 
 void SlideBlock::reverseMove()

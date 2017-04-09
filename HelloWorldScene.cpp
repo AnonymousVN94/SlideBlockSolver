@@ -30,7 +30,7 @@ bool HelloWorld::init()
 	int i, j;
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	Vec2 origin = Director::getInstance()->getVisibleOrigin();
-
+	std::srand(time(NULL));
 	auto closeItem = MenuItemImage::create(
 		"CloseNormal.png",
 		"CloseSelected.png",
@@ -85,7 +85,7 @@ bool HelloWorld::init()
 				break;
 			case cocos2d::ui::Widget::TouchEventType::ENDED:
 				log("------------------- searching for path ---------------");
-				searchPath();
+				takeAMove();
 				break;
 			case cocos2d::ui::Widget::TouchEventType::CANCELED:
 				break;
@@ -110,6 +110,7 @@ bool HelloWorld::init()
 		}
 	return true;
 }
+
 
 bool HelloWorld::onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event)
 {
@@ -180,76 +181,57 @@ void HelloWorld::getAllMove(std::vector<Move>& moves)
 void HelloWorld::sortMove(std::vector<Move> &moves, std::vector<Move> &his)
 {
 	int i, j;
-	bool erase;
-	std::vector<Coor> room;
 	if(his.size() > 0)
 	{
-		auto hisMove = his.back();
 		for(i = 0; i < moves.size(); ++i)
-			if(moves[i]._id == hisMove._id && moves[i]._distance + hisMove._distance == 0)
+			if(moves[i]._id == his.back()._id && moves[i]._distance + his.back()._distance == 0)
 			{
 				moves.erase(moves.begin() + i);
+				--i;
 				break;
 			}
-		slideblocks[hisMove._id]->reverseMove();
-		slideblocks[hisMove._id]->getFreeCoorIfMove(room, hisMove._distance);
-		slideblocks[hisMove._id]->moveBy(hisMove._distance);
 	}
-	if(room.size() > 0)
+	std::vector<unsigned int> numberOfMoves;
+	std::vector<Move> temp;
+	for(auto move : moves)
 	{
-		for(i = 0; i < slideblocks.size(); ++i)
+		temp.clear();
+		slideblocks[move._id]->moveBy(move._distance);
+		getAllMove(temp);
+		unsigned int currentHash = SlideBlock::hashCurrentMatrix();
+		if(stateMatrix.find(currentHash) == stateMatrix.end())
 		{
-			erase = true;
-			for(auto r : room)
-				if(slideblocks[i]->possibleReachTo(r) && i != his.back()._id)
-				{
-					erase = false;
-					break;
-				}
-			if(erase)
-			{
-				for(j = 0; j < moves.size(); ++j)
-					if(moves[j]._id == i)
-					{
-						moves.erase(moves.begin() + j);
-						--j;
-					}
-			}
+			if(slideblocks.back()->possibleReachTo(DESTINATION_COOR))
+				numberOfMoves.push_back(UINT_MAX);
+			else
+				numberOfMoves.push_back(temp.size());
 		}
+		else
+		{
+			numberOfMoves.push_back(0);
+		}
+		slideblocks[move._id]->reverseMove();
 	}
-	//for(j = 0; j < moves.size(); ++j)
-	//{
-	//	std::vector<Coor> coor;
-	//	Move move = moves[j];
-	//	erase = true;
-	//	slideblocks[move._id]->getFreeCoorIfMove(coor, move._distance);
-	//	slideblocks[move._id]->moveBy(move._distance);
-	//	for(auto c : coor)
-	//	{
-	//		for(i = 0; i < slideblocks.size(); ++i)
-	//			if(i != move._id && slideblocks[i]->possibleReachTo(c))
-	//			{
-	//				erase = false;
-	//				break;
-	//			}
-	//		if(!erase)
-	//			break;
-	//	}
-	//	slideblocks[move._id]->reverseMove();
-	//	if(erase)
-	//	{
-	//		moves.erase(moves.begin() + j);
-	//		--j;
-	//	}
-	//}
+	for(j = moves.size() - 1; j > 0; --j)
+		for(i = 0; i < j; ++i)
+			if(numberOfMoves[i] > numberOfMoves[j])
+			{
+				unsigned int temp = numberOfMoves[i];
+				numberOfMoves[i] = numberOfMoves[j];
+				numberOfMoves[j] = temp;
+				Move m = moves[i];
+				moves[i] = moves[j];
+				moves[j] = m;
+			}
 }
 
 void HelloWorld::searchPath()
 {
 	std::vector<Move> allMoves, moves;
-	std::vector<Move> paths;
+	//std::vector<Move> paths;
 	int i;
 	bool found = false;
+
 	while(true)
 	{
 		if(slideblocks.back()->possibleReachTo(DESTINATION_COOR))
@@ -258,43 +240,56 @@ void HelloWorld::searchPath()
 			found = true;
 			break;
 		}
+		stateMatrix.insert(SlideBlock::hashCurrentMatrix());
 		moves.clear();
 		getAllMove(moves);
 		sortMove(moves, paths);
-		if(moves.empty())
+		if(moves.size() > 0)
 		{
-			Move his = paths.back();
-			paths.pop_back();
-			slideblocks[his._id]->reverseMove();
+			slideblocks[moves.back()._id]->moveBy(moves.back()._distance);
+			paths.push_back(moves.back());
 		}
 		else
 		{
-			allMoves.insert(allMoves.end(), moves.begin(), moves.end());
-		}
-		if(allMoves.empty())
-		{
-			log("------------- out of move -------------");
+			log("=================== out of move ================");
 			break;
 		}
-		Move move = allMoves.back();
-		allMoves.pop_back();
-		paths.push_back(move);
-		slideblocks[move._id]->reverseMove();
-		slideblocks[move._id]->moveBy(move._distance);
 	}
-	for(i = paths.size() - 1; i >= 0; --i)
+	for(auto path : paths)
+		log("----%d, %d----->", path._id, path._distance);
+}
+
+void HelloWorld::takeAMove()
+{
+	std::vector<Move> moves;
+
+	if(slideblocks.back()->possibleReachTo(DESTINATION_COOR))
 	{
-		auto path = paths[i];
-		slideblocks[path._id]->reverseMove();
+		log("------------- found path -------------- %d moves", paths.size());
+		found = true;
+		return;
 	}
-	if(found)
+	auto state = stateMatrix.insert(SlideBlock::hashCurrentMatrix());
+	moves.clear();
+	getAllMove(moves);
+	sortMove(moves, paths);
+	if(moves.size() > 0)
 	{
-		for(auto path : paths)
+		Move m;
+		if(state.second)
+			m = moves[moves.size() - 1];
+		else
+			m = moves[std::rand() % moves.size()];
+		slideblocks[m._id]->moveBy(m._distance);
+		paths.push_back(m);
+		slideblocks[m._id]->refreshPosition([&]()
 		{
-			log("---- %d, %d ----->", path._id, path._distance);
-			//slideblocks[path._id]->moveBy(path._distance);
-			//slideblocks[path._id]->refreshPosition();
-		}
+			takeAMove();
+		});
+	}
+	else
+	{
+		log("=================== out of move ================");
 	}
 }
 

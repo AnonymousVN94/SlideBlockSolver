@@ -63,6 +63,7 @@ private:
 public:
 	SlideBlock(std::vector<Coor> &coor, TYPE type);
 	static SlideBlock* create(std::vector<Coor> &coor, TYPE type);
+	static unsigned int hashCurrentMatrix();
 	virtual bool init();
 	bool possibleReachTo(Coor coor);
 	void getAllMove(std::vector<int> &move);
@@ -74,7 +75,7 @@ public:
 	bool isValidMove(int distance);
 	void moveBy(int distance);
 	void reverseMove();
-	void refreshPosition();
+	void refreshPosition(std::function<void()> cbOnFinish);
 	void logdebug();
 	~SlideBlock();
 };

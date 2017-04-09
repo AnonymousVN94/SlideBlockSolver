@@ -5,15 +5,26 @@
 #include "ui/CocosGUI.h"
 #include "SlideBlock.h"
 #include <stack>
+#include <set>
 
 const Coor DESTINATION_COOR = Coor(5, 3);
 
 struct Move
 {
+	Move()
+	{
+
+	}
 	Move(int id, int distance)
 	{
 		_id = id;
 		_distance = distance;
+	}
+	Move& operator=(Move &other)
+	{
+		_id = other._id;
+		_distance = other._distance;
+		return *this;
 	}
 	int _id, _distance;
 };
@@ -24,19 +35,21 @@ private:
 	std::vector<Coor> coor;
 	std::vector<SlideBlock*> slideblocks;
 	std::stack<int> historyMove;
-	std::vector<Move> tracePath;
+	std::vector<Move> tracePath, paths;
+	std::set<unsigned int> stateMatrix;
 	bool found;
 public:
     static cocos2d::Scene* createScene();
 
     virtual bool init();
-    
+	void updatePos(float dt);
     // a selector callback
     void menuCloseCallback(cocos2d::Ref* pSender);
 	void getAllMove(std::vector<Move> &moves);
 	void sortMove(std::vector<Move> &moves, std::vector<Move> &his);
 	void searchPath();
 	void searchPathRecursive();
+	void takeAMove();
     // implement the "static create()" method manually
     CREATE_FUNC(HelloWorld);
 	bool onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event);
