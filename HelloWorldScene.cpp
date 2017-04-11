@@ -268,7 +268,7 @@ void HelloWorld::takeAMove()
 	{
 		log("------------- found path -------------- %d moves", paths.size());
 		found = true;
-		optimizePath();
+		optimizePathFrom(0);
 		return;
 	}
 	unsigned int hashMatrix = SlideBlock::hashCurrentMatrix();
@@ -321,6 +321,68 @@ void HelloWorld::optimizePath()
 		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
 	index = -1;
 	this->runAction(Sequence::create(DelayTime::create(15.0f), CallFunc::create([&]()
+	{
+		goBack();
+	}), nullptr));
+}
+
+void HelloWorld::optimizePathFrom(int index)
+{
+	if(paths.size() != hashMove.size())
+	{
+		log("Optimize path failed!");
+		return;
+	}
+	int i, j;
+	for(i = index; i < hashMove.size() - 1; ++i)
+	{
+		for(j = hashMove.size() - 1; j > i + 1; --j)
+			if(hashMove[i] == hashMove[j])
+			{
+				hashMove.erase(hashMove.begin() + i, hashMove.begin() + j);
+				paths.erase(paths.begin() + i, paths.begin() + j);
+				break;
+			}
+	}
+	log("============= Optimize path finished %d =============", paths.size());
+	log("============= Starting minimize path    =============");
+	for(i = 0; i < slideblocks.size(); ++i)
+		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+	minimizePathFrom();
+}
+
+void HelloWorld::minimizePathFrom()
+{
+	int i, index;
+	unsigned int currentHash;
+	std::vector<Move> moves;
+	for(index = 0; index < hashMove.size() - 1; ++index)
+	{
+		moves.clear();
+		getAllMove(moves);
+		for(auto move : moves)
+		{
+			slideblocks[move._id]->moveBy(move._distance);
+			currentHash = SlideBlock::hashCurrentMatrix();
+			for(i = hashMove.size() - 1; i > index + 1; --i)
+				if(hashMove[i] == currentHash)
+				{
+					hashMove.erase(hashMove.begin() + index + 1, hashMove.begin() + i);
+					paths.erase(paths.begin() + index, paths.begin() + i);
+					paths.insert(paths.begin() + index, move);
+					break;
+				}
+			slideblocks[move._id]->reverseMove();
+		}
+		slideblocks[paths[index]._id]->moveBy(paths[index]._distance);
+	}
+	log("============= Minimize path finished %d =============", paths.size());
+	for(i = 0; i < slideblocks.size(); ++i)
+		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+	for(auto path : paths)
+		log("(%d, %d)->", path._id, path._distance);
+	index = -1;
+	this->runAction(Sequence::create(DelayTime::create(10.0f), CallFunc::create([&]()
 	{
 		goBack();
 	}), nullptr));

@@ -53,6 +53,8 @@ public:
 	void searchPathRecursive();
 	void takeAMove();
 	void optimizePath();
+	void optimizePathFrom(int index);
+	void minimizePathFrom();
 	void goBack();
     // implement the "static create()" method manually
     CREATE_FUNC(HelloWorld);
