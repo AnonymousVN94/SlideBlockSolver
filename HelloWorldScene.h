@@ -44,10 +44,10 @@ public:
     static cocos2d::Scene* createScene();
 
     virtual bool init();
-	void updatePos(float dt);
     // a selector callback
     void menuCloseCallback(cocos2d::Ref* pSender);
 	void getAllMove(std::vector<Move> &moves);
+	void sortBodys();
 	void sortMove(std::vector<Move> &moves, std::vector<Move> &his);
 	void searchPath();
 	void searchPathRecursive();

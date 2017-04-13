@@ -141,7 +141,7 @@ void SlideBlock::moveBy(int distance)
 		c += offset;
 		SlideBlock::_matrix[c.x][c.y] = true;
 	}
-	trace.push(distance);
+	trace.push_back(distance);
 }
 
 void SlideBlock::refreshPosition(std::function<void()> cbOnFinish)
@@ -151,7 +151,7 @@ void SlideBlock::refreshPosition(std::function<void()> cbOnFinish)
 		log("========== slideblock %d stack is empty ==============", _id);
 		return;
 	}
-	int distance = trace.top();
+	int distance = trace.back();
 	Vec2 moveDistance;
 	if(_type == TYPE::VERTICAL)
 		moveDistance = Vec2(0.0f, distance * 90);
@@ -164,8 +164,8 @@ void SlideBlock::reverseMove()
 {
 	if(trace.empty())
 		return;
-	int v = trace.top();
-	trace.pop();
+	int v = trace.back();
+	trace.pop_back();
 	moveBy(-v);
 }
 
@@ -209,6 +209,7 @@ void SlideBlock::getFreeCoorIfMove(std::vector<Coor>& coor, int distance)
 
 void SlideBlock::setBodyCoor(std::vector<Coor> &_bodyCoor)
 {
+	trace.clear();
 	bodyCoor = _bodyCoor;
 	this->setPosition(Vec2::ZERO);
 }

@@ -60,6 +60,7 @@ bool HelloWorld::init()
 					type = TYPE::VERTICAL;
 				else
 					type = TYPE::HORIZONTAL;
+				sortBodys();
 				sb = SlideBlock::create(coor, type);
 				this->addChild(sb, 1);
 				slideblocks.push_back(sb);
@@ -111,7 +112,6 @@ bool HelloWorld::init()
 		}
 	return true;
 }
-
 
 bool HelloWorld::onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event)
 {
@@ -165,6 +165,16 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 
 }
 
+void HelloWorld::sortBodys()
+{
+	std::sort(coor.begin(), coor.end(), [&](Coor &first, Coor &second)
+	{
+		if(first.x == second.x)
+			return first.y < second.y;
+		return first.x < second.x;
+	});
+	coor.erase(unique(coor.begin(), coor.end()), coor.end());
+}
 void HelloWorld::getAllMove(std::vector<Move>& moves)
 {
 	int i;
@@ -282,7 +292,7 @@ void HelloWorld::takeAMove()
 		if(state.second)
 			m = moves[moves.size() - 1];
 		else
-			m = moves[std::rand() % moves.size()];
+			m = moves[std::rand() % (moves.size() - 1)];
 		slideblocks[m._id]->moveBy(m._distance);
 		paths.push_back(m);
 		hashMove.push_back(hashMatrix);
@@ -349,14 +359,21 @@ void HelloWorld::optimizePathFrom(int index)
 	for(i = 0; i < slideblocks.size(); ++i)
 		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
 	minimizePathFrom();
+	//for(i = 0; i < slideblocks.size(); ++i)
+	//	slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+	//index = -1;
+	//this->runAction(Sequence::create(DelayTime::create(15.0f), CallFunc::create([&]()
+	//{
+	//	goBack();
+	//}), nullptr));
 }
 
 void HelloWorld::minimizePathFrom()
 {
-	int i, index;
+	int i, index_state;
 	unsigned int currentHash;
 	std::vector<Move> moves;
-	for(index = 0; index < hashMove.size() - 1; ++index)
+	for(index_state = 0; index_state < hashMove.size() - 1; ++index_state)
 	{
 		moves.clear();
 		getAllMove(moves);
@@ -364,23 +381,34 @@ void HelloWorld::minimizePathFrom()
 		{
 			slideblocks[move._id]->moveBy(move._distance);
 			currentHash = SlideBlock::hashCurrentMatrix();
-			for(i = hashMove.size() - 1; i > index + 1; --i)
+			for(i = hashMove.size() - 1; i > index_state + 1; --i)
 				if(hashMove[i] == currentHash)
 				{
-					hashMove.erase(hashMove.begin() + index + 1, hashMove.begin() + i);
-					paths.erase(paths.begin() + index, paths.begin() + i);
-					paths.insert(paths.begin() + index, move);
+					hashMove.erase(hashMove.begin() + index_state + 1, hashMove.begin() + i);
+					paths.erase(paths.begin() + index_state, paths.begin() + i);
+					paths.insert(paths.begin() + index_state, move);
 					break;
 				}
 			slideblocks[move._id]->reverseMove();
 		}
-		slideblocks[paths[index]._id]->moveBy(paths[index]._distance);
+		slideblocks[paths[index_state]._id]->moveBy(paths[index_state]._distance);
 	}
 	log("============= Minimize path finished %d =============", paths.size());
 	for(i = 0; i < slideblocks.size(); ++i)
 		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+	for(i = 0; i < paths.size() - 1; ++i)
+	{
+		index_state = i + 1;
+		while(index_state < paths.size() && paths[i]._id == paths[index_state]._id)
+		{
+			paths[i]._distance += paths[index_state]._distance;
+			paths.erase(paths.begin() + index_state);
+		}
+	}
+	log("============= Minimize path 2 finished %d =============", paths.size());
 	for(auto path : paths)
-		log("(%d, %d)->", path._id, path._distance);
+		log("===(%d, %d)===>", path._id, path._distance);
+
 	index = -1;
 	this->runAction(Sequence::create(DelayTime::create(10.0f), CallFunc::create([&]()
 	{

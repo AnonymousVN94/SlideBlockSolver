@@ -56,7 +56,7 @@ private:
 	TYPE _type;
 	std::vector<Coor> bodyCoor;
 	std::vector<Sprite*> bodySprite;
-	std::stack<int> trace;
+	std::vector<int> trace;
 	int _id;
 	static int numberOfBlock;
 	static bool _matrix[6][6];
