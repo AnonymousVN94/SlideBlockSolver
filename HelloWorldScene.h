@@ -46,6 +46,7 @@ public:
     virtual bool init();
     // a selector callback
     void menuCloseCallback(cocos2d::Ref* pSender);
+	void resetOriginalMatrix();
 	void getAllMove(std::vector<Move> &moves);
 	void sortBodys();
 	void sortMove(std::vector<Move> &moves, std::vector<Move> &his);
@@ -53,7 +54,7 @@ public:
 	void searchPathRecursive();
 	void takeAMove();
 	void optimizePath();
-	void optimizePathFrom(int index);
+	void optimizePathFrom(int index_path);
 	void minimizePathFrom();
 	void goBack();
     // implement the "static create()" method manually

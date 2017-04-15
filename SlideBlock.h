@@ -64,6 +64,7 @@ public:
 	SlideBlock(std::vector<Coor> &coor, TYPE type);
 	static SlideBlock* create(std::vector<Coor> &coor, TYPE type);
 	static unsigned int hashCurrentMatrix();
+	static void resetMatrix();
 	virtual bool init();
 	bool possibleReachTo(Coor coor);
 	void getAllMove(std::vector<int> &move);

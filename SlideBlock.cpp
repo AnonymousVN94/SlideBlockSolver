@@ -43,6 +43,14 @@ unsigned int SlideBlock::hashCurrentMatrix()
 	return ret;
 }
 
+void SlideBlock::resetMatrix()
+{
+	int i, j;
+	for(i = 0; i < 6; ++i)
+		for(j = 0; j < 6; ++j)
+			_matrix[i][j] = false;
+}
+
 bool SlideBlock::init()
 {
 	for(auto c : bodyCoor)
@@ -211,6 +219,10 @@ void SlideBlock::setBodyCoor(std::vector<Coor> &_bodyCoor)
 {
 	trace.clear();
 	bodyCoor = _bodyCoor;
+	for(auto c : bodyCoor)
+	{
+		SlideBlock::_matrix[c.x][c.y] = true;
+	}
 	this->setPosition(Vec2::ZERO);
 }
 
