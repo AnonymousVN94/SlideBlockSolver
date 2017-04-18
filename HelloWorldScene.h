@@ -8,6 +8,7 @@
 #include <set>
 
 const Coor DESTINATION_COOR = Coor(5, 3);
+using std::string;
 
 struct Move
 {
@@ -26,6 +27,10 @@ struct Move
 		_distance = other._distance;
 		return *this;
 	}
+	bool operator==(const Move &other)
+	{
+		return (_id == other._id) && (_distance == other._distance);
+	}
 	int _id, _distance;
 };
 
@@ -36,8 +41,10 @@ private:
 	std::vector<SlideBlock*> slideblocks;
 	std::vector<std::vector<Coor>> originSlideBlocks;
 	std::vector<Move> tracePath, paths;
-	std::set<unsigned int> stateMatrix;
-	std::vector<unsigned int> hashMove;
+	//std::set<unsigned int> stateMatrix;
+	std::set<string> stateMatrixString;
+	//std::vector<unsigned int> hashMove;
+	std::vector<string> hashMoveString;
 	bool found;
 	int index;
 public:
@@ -47,13 +54,14 @@ public:
     // a selector callback
     void menuCloseCallback(cocos2d::Ref* pSender);
 	void resetOriginalMatrix();
+	bool checkPathValid();
 	void getAllMove(std::vector<Move> &moves);
 	void sortBodys();
 	void sortMove(std::vector<Move> &moves, std::vector<Move> &his);
 	void searchPath();
 	void searchPathRecursive();
 	void takeAMove();
-	void optimizePath();
+	void finalOptimizePath();
 	void optimizePathFrom(int index_path);
 	void minimizePathFrom();
 	void goBack();

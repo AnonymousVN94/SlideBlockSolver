@@ -3,7 +3,7 @@
 
 USING_NS_CC;
 
-bool SlideBlock::_matrix[6][6] = {false};
+int SlideBlock::_matrix[6][6] = {0};
 
 Scene* HelloWorld::createScene()
 {
@@ -28,6 +28,8 @@ bool HelloWorld::init()
 		return false;
 	}
 	int i, j;
+	slideblocks.push_back(nullptr);
+	originSlideBlocks.push_back(std::vector<Coor>());
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	Vec2 origin = Director::getInstance()->getVisibleOrigin();
 	std::srand(time(NULL));
@@ -165,6 +167,37 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 
 }
 
+void HelloWorld::resetOriginalMatrix()
+{
+	int i;
+	SlideBlock::resetMatrix();
+	for(i = 1; i < slideblocks.size(); ++i)
+		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+}
+
+bool HelloWorld::checkPathValid()
+{
+	bool isValid;
+	resetOriginalMatrix();
+	for(auto path : paths)
+	{
+		if(slideblocks[path._id]->isValidMove(path._distance))
+		{
+			slideblocks[path._id]->moveBy(path._distance);
+		}
+		else
+		{
+			break;
+		}
+	}
+	if(slideblocks.back()->possibleReachTo(DESTINATION_COOR))
+		isValid = true;
+	else
+		isValid = false;
+	resetOriginalMatrix();
+	return isValid;
+}
+
 void HelloWorld::sortBodys()
 {
 	std::sort(coor.begin(), coor.end(), [&](Coor &first, Coor &second)
@@ -178,7 +211,7 @@ void HelloWorld::sortBodys()
 void HelloWorld::getAllMove(std::vector<Move>& moves)
 {
 	int i;
-	for(i = 0; i < slideblocks.size(); ++i)
+	for(i = 1; i < slideblocks.size(); ++i)
 	{
 		std::vector<int> dis;
 		slideblocks[i]->getAllMove(dis);
@@ -209,8 +242,8 @@ void HelloWorld::sortMove(std::vector<Move> &moves, std::vector<Move> &his)
 		temp.clear();
 		slideblocks[move._id]->moveBy(move._distance);
 		getAllMove(temp);
-		unsigned int currentHash = SlideBlock::hashCurrentMatrix();
-		if(stateMatrix.find(currentHash) == stateMatrix.end())
+		string currentHash = SlideBlock::hashCurrentMatrix2String();
+		if(stateMatrixString.find(currentHash) == stateMatrixString.end())
 		{
 			if(slideblocks.back()->possibleReachTo(DESTINATION_COOR))
 				numberOfMoves.push_back(UINT_MAX);
@@ -251,7 +284,7 @@ void HelloWorld::searchPath()
 			found = true;
 			break;
 		}
-		stateMatrix.insert(SlideBlock::hashCurrentMatrix());
+		stateMatrixString.insert(SlideBlock::hashCurrentMatrix2String());
 		moves.clear();
 		getAllMove(moves);
 		sortMove(moves, paths);
@@ -281,22 +314,25 @@ void HelloWorld::takeAMove()
 		optimizePathFrom(0);
 		return;
 	}
-	unsigned int hashMatrix = SlideBlock::hashCurrentMatrix();
-	auto state = stateMatrix.insert(hashMatrix);
+	//unsigned int hashMatrix = SlideBlock::hashCurrentMatrix();
+	string hashMatrix = SlideBlock::hashCurrentMatrix2String();
+	auto state = stateMatrixString.insert(hashMatrix);
 	moves.clear();
 	getAllMove(moves);
 	sortMove(moves, paths);
 	if(moves.size() > 0)
 	{
 		Move m;
+
 		if(state.second)
 			m = moves[moves.size() - 1];
 		else
-			m = moves[std::rand() % (moves.size() - 1)];
+			m = moves[std::rand() % moves.size()];
 		slideblocks[m._id]->moveBy(m._distance);
 		paths.push_back(m);
-		hashMove.push_back(hashMatrix);
-		slideblocks[m._id]->refreshPosition([&]()
+		//hashMove.push_back(hashMatrix);
+		hashMoveString.push_back(hashMatrix);
+		slideblocks[m._id]->refreshPosition(0.0025f, [&]()
 		{
 			takeAMove();
 		});
@@ -307,95 +343,152 @@ void HelloWorld::takeAMove()
 	}
 }
 
-void HelloWorld::optimizePath()
+void HelloWorld::finalOptimizePath()
 {
-	if(paths.size() != hashMove.size())
+	int i, j, t;
+	bool canCombin;
+	resetOriginalMatrix();
+	for(i = 0; i < paths.size() - 2; ++i)
 	{
-		log("Optimize path failed!");
-		return;
-	}
-	log("============= Optimizing path distance %d =============", paths.size());
-	int i, j;
-	for(i = 0; i < hashMove.size() - 1; ++i)
-	{
-		for(j = i + 1; j < hashMove.size(); ++j)
-			if(hashMove[i] == hashMove[j])
+		for(j = i + 2; j < paths.size(); ++j)
+		{
+			if (!slideblocks[paths[i]._id]->isValidMove(paths[i]._distance))
+				log("------------- +++++ ---------------------");
+			if(paths[i]._id == paths[j]._id)
 			{
-				hashMove.erase(hashMove.begin() + i, hashMove.begin() + j);
-				paths.erase(paths.begin() + i, paths.begin() + j);
-				j = i + 1;
+				canCombin = true;
+				auto combinPath = Move(paths[i]._id, paths[i]._distance + paths[j]._distance);
+				if(slideblocks[combinPath._id]->isValidMove(combinPath._distance))
+				{
+					slideblocks[combinPath._id]->moveBy(combinPath._distance);
+					for(t = i + 1; t < j; ++t)
+						if(slideblocks[paths[t]._id]->isValidMove(paths[t]._distance))
+						{
+							slideblocks[paths[t]._id]->moveBy(paths[t]._distance);
+						}
+						else
+						{
+							canCombin = false;
+							break;
+						}
+					while(--t > i)
+					{
+						slideblocks[paths[t]._id]->reverseMove();
+					}
+					slideblocks[combinPath._id]->reverseMove();
+					if(canCombin)
+					{
+						paths[i]._distance += paths[j]._distance;
+						paths.erase(paths.begin() + j);
+					}
+				}
+				break;
 			}
+		}
+		slideblocks[paths[i]._id]->moveBy(paths[i]._distance);
 	}
-	log("============= Optimize path finished %d =============", paths.size());
-	for(i = 0; i < slideblocks.size(); ++i)
-		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
-	index = -1;
-	this->runAction(Sequence::create(DelayTime::create(15.0f), CallFunc::create([&]()
-	{
-		goBack();
-	}), nullptr));
+	for(i = 0; i < paths.size(); ++i)
+		if(paths[i]._distance == 0)
+		{
+			paths.erase(paths.begin() + i);
+			--i;
+		}
+	log("============= Final optimize path finished %d =============", paths.size());
+
 }
 
-void HelloWorld::optimizePathFrom(int index)
+void HelloWorld::optimizePathFrom(int index_path)
 {
-	if(paths.size() != hashMove.size())
+	if(paths.size() != hashMoveString.size())
 	{
 		log("Optimize path failed!");
 		return;
 	}
-	int i, j;
-	for(i = index; i < hashMove.size() - 1; ++i)
+	if (!checkPathValid())
 	{
-		for(j = hashMove.size() - 1; j > i + 1; --j)
-			if(hashMove[i] == hashMove[j])
+		log("---------------- find path failed -------------------------");
+	}
+	else
+	{
+		log("---------------- find path success ------------------------");
+	}
+	int i, j;
+	for(i = index_path; i < hashMoveString.size() - 2; ++i)
+	{
+		for(j = hashMoveString.size() - 1; j > i + 1; --j)
+			if(hashMoveString[i] == hashMoveString[j])
 			{
-				hashMove.erase(hashMove.begin() + i, hashMove.begin() + j);
+				hashMoveString.erase(hashMoveString.begin() + i, hashMoveString.begin() + j);
 				paths.erase(paths.begin() + i, paths.begin() + j);
 				break;
 			}
 	}
 	log("============= Optimize path finished %d =============", paths.size());
-	log("============= Starting minimize path    =============");
-	for(i = 0; i < slideblocks.size(); ++i)
-		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
-	minimizePathFrom();
-	//for(i = 0; i < slideblocks.size(); ++i)
-	//	slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
-	//index = -1;
-	//this->runAction(Sequence::create(DelayTime::create(15.0f), CallFunc::create([&]()
-	//{
-	//	goBack();
-	//}), nullptr));
+	if(checkPathValid())
+	{
+		log("======================= optimizePathFrom correct ==========================");
+		minimizePathFrom();
+	}
+	else
+	{
+		log("====================== optimizePathFrom failed ============================");
+		resetOriginalMatrix();
+		index = -1;
+		this->runAction(Sequence::create(DelayTime::create(10.0f), CallFunc::create([&]()
+		{
+			goBack();
+		}), nullptr));
+	}
 }
 
 void HelloWorld::minimizePathFrom()
 {
 	int i, index_state;
-	unsigned int currentHash;
+	string currentHash;
 	std::vector<Move> moves;
-	for(index_state = 0; index_state < hashMove.size() - 1; ++index_state)
+	Move nextMove;
+	resetOriginalMatrix();
+	for(index_state = 0; index_state < hashMoveString.size() - 2; ++index_state)
 	{
+		nextMove = paths[index_state];
 		moves.clear();
 		getAllMove(moves);
+		if (std::find(moves.begin(), moves.end(), nextMove) == moves.end())
+			log("------------------- clgt --------------------");
 		for(auto move : moves)
 		{
 			slideblocks[move._id]->moveBy(move._distance);
-			currentHash = SlideBlock::hashCurrentMatrix();
-			for(i = hashMove.size() - 1; i > index_state + 1; --i)
-				if(hashMove[i] == currentHash)
+			currentHash = SlideBlock::hashCurrentMatrix2String();
+			for(i = hashMoveString.size() - 1; i > index_state + 1; --i)
+				if(hashMoveString[i] == currentHash)
 				{
-					hashMove.erase(hashMove.begin() + index_state + 1, hashMove.begin() + i);
+					hashMoveString.erase(hashMoveString.begin() + index_state + 1, hashMoveString.begin() + i);
 					paths.erase(paths.begin() + index_state, paths.begin() + i);
 					paths.insert(paths.begin() + index_state, move);
+					nextMove = move;
 					break;
 				}
 			slideblocks[move._id]->reverseMove();
 		}
-		slideblocks[paths[index_state]._id]->moveBy(paths[index_state]._distance);
+		if (slideblocks[nextMove._id]->isValidMove(nextMove._distance))
+			slideblocks[nextMove._id]->moveBy(nextMove._distance);
+		else
+			log("====================== break point ==================");
 	}
 	log("============= Minimize path finished %d =============", paths.size());
-	for(i = 0; i < slideblocks.size(); ++i)
-		slideblocks[i]->setBodyCoor(originSlideBlocks[i]);
+	if(!checkPathValid())
+	{
+		log("========================== minimize path failed ==========================");
+		resetOriginalMatrix();
+		index = -1;
+		this->runAction(Sequence::create(DelayTime::create(10.0f), CallFunc::create([&]()
+		{
+			goBack();
+		}), nullptr));
+		return;
+	}
+	log("========================== minimize path correct ==========================");
+
 	for(i = 0; i < paths.size() - 1; ++i)
 	{
 		index_state = i + 1;
@@ -406,9 +499,33 @@ void HelloWorld::minimizePathFrom()
 		}
 	}
 	log("============= Minimize path 2 finished %d =============", paths.size());
+	if (checkPathValid())
+	{
+		log("-------------- minimize path 2 correct ------------------");
+	}
+	else
+	{
+		log("-------------- minimize path 2 failed --------------------");
+	}
+	//while(true)
+	//{
+	//	auto length = paths.size();
+	finalOptimizePath();
+//	auto new_length = paths.size();
+//	if(length == new_length)
+//		break;
+//}
+	if(checkPathValid())
+	{
+		log("================ finalOptimizePath correct ===================");
+	}
+	else
+	{
+		log("================ finalOptimizePath failed ===================");
+	}
 	for(auto path : paths)
-		log("===(%d, %d)===>", path._id, path._distance);
-
+		log("=========(%d, %d)===========>", path._id, path._distance);
+	resetOriginalMatrix();
 	index = -1;
 	this->runAction(Sequence::create(DelayTime::create(10.0f), CallFunc::create([&]()
 	{
@@ -421,11 +538,18 @@ void HelloWorld::goBack()
 	++index;
 	if(index < paths.size())
 	{
-		slideblocks[paths[index]._id]->moveBy(paths[index]._distance);
-		slideblocks[paths[index]._id]->refreshPosition([&]()
+		if(slideblocks[paths[index]._id]->isValidMove(paths[index]._distance))
 		{
-			goBack();
-		});
+			slideblocks[paths[index]._id]->moveBy(paths[index]._distance);
+			slideblocks[paths[index]._id]->refreshPosition(0.5f, [&]()
+			{
+				goBack();
+			});
+		}
+		else
+		{
+			log("============== %d, %d ========== is invalide", paths[index]._id, paths[index]._distance);
+		}
 	}
 }
 

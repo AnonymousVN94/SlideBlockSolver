@@ -1,6 +1,6 @@
 #include "SlideBlock.h"
 
-int SlideBlock::numberOfBlock = 0;
+int SlideBlock::numberOfBlock = 1;
 
 SlideBlock::SlideBlock(std::vector<Coor>& coor, TYPE type)
 {
@@ -10,7 +10,7 @@ SlideBlock::SlideBlock(std::vector<Coor>& coor, TYPE type)
 	bodyCoor = coor;
 	for(auto c : coor)
 	{
-		SlideBlock::_matrix[c.x][c.y] = true;
+		SlideBlock::_matrix[c.x][c.y] = _id;
 	}
 }
 
@@ -43,12 +43,24 @@ unsigned int SlideBlock::hashCurrentMatrix()
 	return ret;
 }
 
+std::string SlideBlock::hashCurrentMatrix2String()
+{
+	int i, j;
+	std::string result;
+	for(i = 0; i < 6; ++i)
+		for (j = 0; j < 6; ++j)
+		{
+			result.push_back(_matrix[i][j] + '0');
+		}
+	return result;
+}
+
 void SlideBlock::resetMatrix()
 {
 	int i, j;
 	for(i = 0; i < 6; ++i)
 		for(j = 0; j < 6; ++j)
-			_matrix[i][j] = false;
+			_matrix[i][j] = 0;
 }
 
 bool SlideBlock::init()
@@ -78,18 +90,22 @@ bool SlideBlock::isValidPosition(int x, int y)
 
 bool SlideBlock::isFreePosition(const Coor &coor)
 {
-	return !_matrix[coor.x][coor.y];
+	return _matrix[coor.x][coor.y] == 0;
 }
 
 bool SlideBlock::isFreePosition(int x, int y)
 {
-	return !_matrix[x][y];
+	return _matrix[x][y] == 0;
 }
 
 bool SlideBlock::isValidMove(int distance)
 {
 	int d = 0;
 	Coor coor, offset;
+	if(distance == 0)
+	{
+		return true;
+	}
 	if(distance > 0)
 	{
 		if(_type == TYPE::VERTICAL)
@@ -132,6 +148,11 @@ bool SlideBlock::isValidMove(int distance)
 void SlideBlock::moveBy(int distance)
 {
 	Coor offset;
+	if(distance == 0)
+	{
+		trace.push_back(distance);
+		return;
+	}
 	if(_type == TYPE::VERTICAL)
 	{
 		offset = Coor(0, distance);
@@ -142,17 +163,17 @@ void SlideBlock::moveBy(int distance)
 	}
 	for(auto c : bodyCoor)
 	{
-		SlideBlock::_matrix[c.x][c.y] = false;
+		SlideBlock::_matrix[c.x][c.y] = 0;
 	}
 	for(auto &c : bodyCoor)
 	{
 		c += offset;
-		SlideBlock::_matrix[c.x][c.y] = true;
+		SlideBlock::_matrix[c.x][c.y] = _id;
 	}
 	trace.push_back(distance);
 }
 
-void SlideBlock::refreshPosition(std::function<void()> cbOnFinish)
+void SlideBlock::refreshPosition(float delay, std::function<void()> cbOnFinish)
 {
 	if(trace.empty())
 	{
@@ -165,7 +186,7 @@ void SlideBlock::refreshPosition(std::function<void()> cbOnFinish)
 		moveDistance = Vec2(0.0f, distance * 90);
 	else
 		moveDistance = Vec2(distance * 90, 0.0f);
-	this->runAction(Sequence::create(MoveBy::create(0.025f, moveDistance), CallFunc::create(cbOnFinish), nullptr));
+	this->runAction(Sequence::create(MoveBy::create(delay, moveDistance), CallFunc::create(cbOnFinish), nullptr));
 }
 
 void SlideBlock::reverseMove()
@@ -199,9 +220,8 @@ void SlideBlock::getAllMove(std::vector<int>& move)
 {
 	int i;
 	for(i = _lenght - 6; i <= 6 - _lenght; ++i)
-		if(isValidMove(i))
+		if(i != 0 && isValidMove(i))
 			move.push_back(i);
-
 }
 
 void SlideBlock::getFreeCoorIfMove(std::vector<Coor>& coor, int distance)
@@ -221,7 +241,7 @@ void SlideBlock::setBodyCoor(std::vector<Coor> &_bodyCoor)
 	bodyCoor = _bodyCoor;
 	for(auto c : bodyCoor)
 	{
-		SlideBlock::_matrix[c.x][c.y] = true;
+		SlideBlock::_matrix[c.x][c.y] = _id;
 	}
 	this->setPosition(Vec2::ZERO);
 }

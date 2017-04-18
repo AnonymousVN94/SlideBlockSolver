@@ -59,11 +59,12 @@ private:
 	std::vector<int> trace;
 	int _id;
 	static int numberOfBlock;
-	static bool _matrix[6][6];
+	static int _matrix[6][6];
 public:
 	SlideBlock(std::vector<Coor> &coor, TYPE type);
 	static SlideBlock* create(std::vector<Coor> &coor, TYPE type);
 	static unsigned int hashCurrentMatrix();
+	static std::string hashCurrentMatrix2String();
 	static void resetMatrix();
 	virtual bool init();
 	bool possibleReachTo(Coor coor);
@@ -77,7 +78,7 @@ public:
 	bool isValidMove(int distance);
 	void moveBy(int distance);
 	void reverseMove();
-	void refreshPosition(std::function<void()> cbOnFinish);
+	void refreshPosition(float delay, std::function<void()> cbOnFinish);
 	void logdebug();
 	~SlideBlock();
 };
